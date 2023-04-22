@@ -1,1 +1,1 @@
-# A rust program where threads communicate via UnixDatagram sockets
+# A rust program multithreading benchmark
