@@ -1,3 +1,29 @@
+# Komunikator internetowy
+# Celem ćwiczenia jest implementacja komunikatora internetowego używającego protokołu TCP.
+# Opis:
+# 1. Należy zaimplementować serwer oraz klienta.
+# 2. Komunikator nie wymaga autentykacji.
+# 3. Klient i serwer uruchomiane są z linii poleceń.
+# 4. Należy założyć, że każdy użytkownik ma przypisany nick. Użytkownicy nie rejestrują się, nie
+# podkradają wiadomości innym. Zakładamy dobrą wolę i współpracę użytkowników.
+# 5. Klient wysyła do serwera komunikat przeznaczony dla innego użytkownika.
+# 6. Klient powinien przysłać komunikat z informacją o nicku nadawcy i odbiorcy.
+# 7. Serwer odbiera komunikat od klienta.
+# 8. Serwer przechowuje komunikaty w pamięci, nie musi ich trwale zapisywać. Jeśli zostanie
+# wyłączony, trudno, niedostarczone wiadomości zostaną zgubione.
+# 9. Klient po uruchomieniu odbiera wiadomości z serwera przeznaczone dla niego. Powinien
+# również odbierać wiadomości przed wysłaniem swoich.
+# 10. Serwer wysyła wiadomości razem z nickami nadawców.
+# 11. Serwer powinien trzymać niedostarczone wiadomości w liście obiektów lub krotek
+# (nadawca, odbiorca, wiadomość). Lepsze (o lepszej złożoności czasowej) jest jednak
+# trzymanie tablicy asocjacyjnej (w Pythonie dictionary/słownik) indeksowanej przez
+# odbiorcę i zwierającej listę obiektów lub krotek (nadawca, wiadomość).
+# 12. Aby zrealizować komunikację należy zaprojektować własny protokół, który umożliwia
+# wysyłanie i odbierania wiadomości z serwera. Potrzebny będą komunikaty:
+# a. Sprawdzenie i pobranie wiadomości dla danego użytkownika.
+# b. Wysłanie wiadomości do innego użytkownika.
+# c. Przesłanie klientowi jego widomości.
+
 import socket
 import socketserver
 import threading
