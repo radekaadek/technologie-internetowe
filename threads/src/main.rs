@@ -1,6 +1,3 @@
-// A program that creates 100 files in the current directory
-// and then deletes them.
-
 use std::fs::File;
 use std::io::prelude::*;
 use std::iter;

@@ -19,6 +19,10 @@ while True:
     c, addr = s.accept()
     print('Got connection from', addr)
     c.send(b'Thank you for connecting')
+    c.send(b'Bye')
     # Close the connection
     c.close()
+
+# if the port is still open, you can close it with:
+# sudo fuser -k 8000/tcp
 
