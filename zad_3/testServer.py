@@ -5,9 +5,11 @@ app = FastAPI()
 
 messages = {}
 
+
 @app.get("/")
 def status():
     return {"status": "OK"}
+
 
 @app.get("/send")
 def send_message(sender: str, recipient: str, message: str):
@@ -16,6 +18,7 @@ def send_message(sender: str, recipient: str, message: str):
     else:
         messages[recipient] = [(sender, message)]
     return {"status": "OK"}
+
 
 @app.get("/receive")
 def receive_message(recipient: str):
