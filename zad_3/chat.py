@@ -1,29 +1,3 @@
-# Komunikator internetowy
-# Celem ćwiczenia jest implementacja komunikatora internetowego używającego protokołu TCP.
-# Opis:
-# 1. Należy zaimplementować serwer oraz klienta.
-# 2. Komunikator nie wymaga autentykacji.
-# 3. Klient i serwer uruchomiane są z linii poleceń.
-# 4. Należy założyć, że każdy użytkownik ma przypisany nick. Użytkownicy nie rejestrują się, nie
-# podkradają wiadomości innym. Zakładamy dobrą wolę i współpracę użytkowników.
-# 5. Klient wysyła do serwera komunikat przeznaczony dla innego użytkownika.
-# 6. Klient powinien przysłać komunikat z informacją o nicku nadawcy i odbiorcy.
-# 7. Serwer odbiera komunikat od klienta.
-# 8. Serwer przechowuje komunikaty w pamięci, nie musi ich trwale zapisywać. Jeśli zostanie
-# wyłączony, trudno, niedostarczone wiadomości zostaną zgubione.
-# 9. Klient po uruchomieniu odbiera wiadomości z serwera przeznaczone dla niego. Powinien
-# również odbierać wiadomości przed wysłaniem swoich.
-# 10. Serwer wysyła wiadomości razem z nickami nadawców.
-# 11. Serwer powinien trzymać niedostarczone wiadomości w liście obiektów lub krotek
-# (nadawca, odbiorca, wiadomość). Lepsze (o lepszej złożoności czasowej) jest jednak
-# trzymanie tablicy asocjacyjnej (w Pythonie dictionary/słownik) indeksowanej przez
-# odbiorcę i zwierającej listę obiektów lub krotek (nadawca, wiadomość).
-# 12. Aby zrealizować komunikację należy zaprojektować własny protokół, który umożliwia
-# wysyłanie i odbierania wiadomości z serwera. Potrzebny będą komunikaty:
-# a. Sprawdzenie i pobranie wiadomości dla danego użytkownika.
-# b. Wysłanie wiadomości do innego użytkownika.
-# c. Przesłanie klientowi jego widomości.
-
 import socket
 import socketserver
 import threading
@@ -83,9 +57,9 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
-def client() -> None:
-    msg = input("Enter your username: ")
+def runClient() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        msg = input("Enter your username: ")
         sock.connect((HOST, PORT))
         sock.sendall(bytes(msg, "utf-8"))
         while True:
@@ -100,14 +74,21 @@ def client() -> None:
             sock.sendall(bytes(msg, "utf-8"))
 
 
-def server() -> None:
+def startServer() -> None:
     try:
         server = ThreadedTCPServer((HOST, PORT), MyTCPHandler)
     except OSError:
         print("A server is already on this address or the address is invalid")
         # kill the program running on the port
         print("Killing the program running on the port")
-        system(f"fuser -k {PORT}/tcp")
+        # check if the OS is Windows or Linux
+        if system("uname") == "Linux":
+            system(f"fuser -k {PORT}/tcp")
+        elif system("uname") == "Windows":
+            system(f"taskkill /F /PID {PORT}")
+        else:
+            print("System not supported")
+        exit(1)
 
     with server:
         server_thread = threading.Thread(target=server.serve_forever)
@@ -125,8 +106,8 @@ if __name__ == "__main__":
         exit(1)
 
     if sys.argv[1] == "server":
-        server()
+        startServer()
     elif sys.argv[1] == "client":
-        client()
+        runClient()
     else:
         print(f"Usage: python3 {file_name} [server|client]")
