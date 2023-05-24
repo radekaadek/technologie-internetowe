@@ -57,9 +57,9 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
-def runClient() -> None:
+def client() -> None:
+    msg = input("Enter your username: ")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        msg = input("Enter your username: ")
         sock.connect((HOST, PORT))
         sock.sendall(bytes(msg, "utf-8"))
         while True:
@@ -74,21 +74,14 @@ def runClient() -> None:
             sock.sendall(bytes(msg, "utf-8"))
 
 
-def startServer() -> None:
+def server() -> None:
     try:
         server = ThreadedTCPServer((HOST, PORT), MyTCPHandler)
     except OSError:
         print("A server is already on this address or the address is invalid")
         # kill the program running on the port
         print("Killing the program running on the port")
-        # check if the OS is Windows or Linux
-        if system("uname") == "Linux":
-            system(f"fuser -k {PORT}/tcp")
-        elif system("uname") == "Windows":
-            system(f"taskkill /F /PID {PORT}")
-        else:
-            print("System not supported")
-        exit(1)
+        system(f"fuser -k {PORT}/tcp")
 
     with server:
         server_thread = threading.Thread(target=server.serve_forever)
@@ -106,8 +99,8 @@ if __name__ == "__main__":
         exit(1)
 
     if sys.argv[1] == "server":
-        startServer()
+        server()
     elif sys.argv[1] == "client":
-        runClient()
+        client()
     else:
         print(f"Usage: python3 {file_name} [server|client]")
