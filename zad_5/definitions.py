@@ -1,7 +1,9 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer
+from sqlalchemy import String, DateTime, Table
 from sqlalchemy.orm import relationship
 Base = declarative_base()
+
 
 class Clan(Base):
     __tablename__ = 'clan'
@@ -9,7 +11,7 @@ class Clan(Base):
     name = Column(String(255), nullable=False)
     tag = Column(String(255), nullable=False)
     created_at = Column(DateTime, nullable=False)
-    players = relationship('Player', backref='clan')
+
 
 class Player(Base):
     __tablename__ = 'player'
@@ -25,6 +27,7 @@ class Player(Base):
     server_id = Column(Integer, ForeignKey('server.id'))
     achievements = relationship('PlayerAchievement', backref='player')
 
+
 class Server(Base):
     __tablename__ = 'server'
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -33,18 +36,17 @@ class Server(Base):
     port = Column(Integer, nullable=False)
     created_at = Column(DateTime, nullable=False)
     owner_id = Column(Integer, ForeignKey('player.id'))
-    players = relationship('Player', backref='server')
+
 
 class Achievement(Base):
     __tablename__ = 'achievement'
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=False)
-    players = relationship('PlayerAchievement', backref='achievement')
 
-class PlayerAchievement(Base):
-    __tablename__ = 'player_achievement'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    player_id = Column(Integer, ForeignKey('player.id'))
-    achievement_id = Column(Integer, ForeignKey('achievement.id'))
-    achieved_at = Column(DateTime, nullable=False)
+
+Player_Achievement = Table(
+    'player_achievement', Base.metadata,
+    Column('player_id', Integer, ForeignKey('player.id')),
+    Column('achievement_id', Integer, ForeignKey('achievement.id'))
+)

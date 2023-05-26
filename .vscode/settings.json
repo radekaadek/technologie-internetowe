@@ -6,5 +6,7 @@
         "./Cargo.toml",
         "./Cargo.toml",
         "./sockets/Cargo.toml"
-    ]
+    ],
+    "python.linting.flake8Enabled": true,
+    "python.linting.enabled": false
 }
