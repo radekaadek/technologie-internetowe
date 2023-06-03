@@ -3,7 +3,7 @@ import uvicorn
 import datetime
 from faker import Faker
 from fastapi import FastAPI, HTTPException
-from definitions import Base
+from table_definitions import Base
 from sqlalchemy import insert, select, update, delete
 
 engine: db.engine.Engine
@@ -20,7 +20,7 @@ def root() -> str:
     return "Hello world!"
 
 
-@app.get("/apply_schema", status_code=201)
+@app.post("/apply_schema", status_code=201)
 def apply_schema() -> str:
     Base.metadata.create_all(engine)
     return "Schema applied"
@@ -41,16 +41,18 @@ def get_db_tables() -> list:
 
 @app.get("/populate", status_code=201)
 def populate_db() -> None:
+    clan_table = db.Table("clan", Base.metadata, autoload=True)
+    player_table = db.Table("player", Base.metadata, autoload=True)
+    server_table = db.Table("server", Base.metadata, autoload=True)
+    achieve_table = db.Table("achievement", Base.metadata, autoload=True)
     # use faker to populate the database
     for _ in range(10):
         # insert using sqlalchemy
-        clan_table = db.Table("clan", Base.metadata, autoload=True)
         clan = {"name": fake.name(), "tag": fake.name(),
                 "created_at": fake.date_time_this_year()}
         ins = insert(clan_table).values(clan)
         conn.execute(ins)
 
-        player_table = db.Table("player", Base.metadata, autoload=True)
         player = {"username": fake.name(), "password_hash": fake.name(),
                   "email": fake.email(), "is_admin": fake.boolean(),
                   "active": fake.boolean(),
@@ -60,7 +62,6 @@ def populate_db() -> None:
         ins = insert(player_table).values(player)
         conn.execute(ins)
 
-        server_table = db.Table("server", Base.metadata, autoload=True)
         server = {"name": fake.name(), "ip": fake.ipv4(),
                   "port": fake.port_number(),
                   "created_at": fake.date_time_this_year(),
@@ -68,7 +69,6 @@ def populate_db() -> None:
         ins = insert(server_table).values(server)
         conn.execute(ins)
 
-        achieve_table = db.Table("achievement", Base.metadata, autoload=True)
         achievement = {"name": fake.name(), "description": fake.text()}
         ins = insert(achieve_table).values(achievement)
         conn.execute(ins)
@@ -104,9 +104,9 @@ def get_player(player_id: int) -> dict:
     # print out request parameters
     print(f"{player_id=}")
     # get player by id
-    table = db.Table("player", Base.metadata)
-    player = conn.execute(select(table).where(
-        table.c.id == player_id)).fetchone()
+    player_table = db.Table("player", Base.metadata)
+    player = conn.execute(select(player_table).where(
+        player_table.c.id == player_id)).fetchone()
     # handle any errors
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -121,7 +121,8 @@ def update_player(player_id: int, username: str = None,
                   last_login: datetime.datetime = None,
                   clan_id: int = None, server_id: int = None) -> None:
     # update player by id
-    player = conn.execute(select(db.Table("player")).where(
+    player_table = db.Table("player", Base.metadata)
+    player = conn.execute(select(player_table).where(
         db.Table("player").c.id == player_id)).fetchone()
     # handle any errors
     if not player:
@@ -131,7 +132,6 @@ def update_player(player_id: int, username: str = None,
                   created_at, last_login, clan_id, server_id]:
         if param is not None:
             player[param] = param
-    player_table = db.Table("player", Base.metadata)
     conn.execute(update(player_table).where(
         db.Table("player").c.id == player_id).values(player))
     return
@@ -146,7 +146,7 @@ def delete_player(player_id: int) -> None:
     # handle any errors
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
-    conn.execute(delete(db.Table("player")).where(
+    conn.execute(delete(table).where(
         table.c.id == player_id))
     return
 
@@ -155,9 +155,9 @@ def delete_player(player_id: int) -> None:
 def players() -> list[dict]:
     # get all players
     players: list[dict] = []
-    for player in conn.execute(db.text("SELECT * FROM player")):
-        players.append(player)
-    return players
+    player_table = db.Table("player", Base.metadata)
+    players = conn.execute(select(player_table)).fetchall()
+    return list(players)
 
 
 if __name__ == "__main__":
