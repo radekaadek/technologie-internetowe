@@ -1,9 +1,10 @@
 import sqlalchemy as db
 import uvicorn
-import io
+import datetime
 from faker import Faker
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from definitions import Base
+from sqlalchemy import insert, select, update, delete
 
 engine: db.engine.Engine
 conn: db.engine.Connection
@@ -14,86 +15,153 @@ app = FastAPI()
 OUTPUT_FILE = "output.txt"
 
 
-@app.get("/apply_schema")
-def apply_schema() -> str:
-    # create the database schema from definitions.py
-    # check if the schema is already applied for clan table
-    query = """"SELECT EXISTS (
-                    SELECT
-                    FROM information_schema.tables
-                    WHERE table_name = 'clan');"""
+@app.get("/", status_code=200)
+def root() -> str:
+    return "Hello world!"
 
-    result = conn.execute(db.text(query))
-    if result.fetchmany()[0][0]:
-        return "Schema already applied"
+
+@app.get("/apply_schema", status_code=201)
+def apply_schema() -> str:
     Base.metadata.create_all(engine)
     return "Schema applied"
 
 
-@app.get("/tables")
-def get_db_tables() -> str:
-    retv = io.StringIO()
+@app.get("/tables", status_code=200)
+def get_db_tables() -> list:
+    tables = []
     # only show tables that are not system tables
     query = """SELECT table_name
                FROM information_schema.tables
                WHERE table_schema='public' AND table_type='BASE TABLE';
                """
     for table in conn.execute(db.text(query)):
-        retv.write(f"{table[0]}    ")
-    return retv.getvalue().strip()
+        tables.append(table[0])
+    return tables
 
 
-@app.get("/populate")
-def populate_db() -> str:
+@app.get("/populate", status_code=201)
+def populate_db() -> None:
     # use faker to populate the database
     for _ in range(10):
-        conn.execute(db.text(f"""
-            INSERT INTO clan (name, tag, created_at)
-            VALUES ('{fake.name()}', '{fake.name()}',
-            '{fake.date_time_this_year()}');"""))
-        # set foreign key to null for now
-        conn.execute(db.text(f"""
-            INSERT INTO player (username, password_hash, email,
-            is_admin, active, created_at, last_login, clan_id,
-            server_id) VALUES ('{fake.name()}', '{fake.name()}',
-            '{fake.email()}', '{fake.boolean()}', '{fake.boolean()}',
-            '{fake.date_time_this_year()}', '{fake.date_time_this_year()}',
-            NULL, NULL);"""))
-        conn.execute(db.text(f"""
-            INSERT INTO server (name, ip, port, created_at, owner_id)
-            VALUES ('{fake.name()}', '{fake.ipv4()}', '{fake.port_number()}',
-            '{fake.date_time_this_year()}', NULL);"""))
-        conn.execute(db.text(f"""
-            INSERT INTO achievement (name, description)
-            VALUES ('{fake.name()}', '{fake.text()}');"""))
-    return "Populated"
+        # insert using sqlalchemy
+        clan_table = db.Table("clan", Base.metadata, autoload=True)
+        clan = {"name": fake.name(), "tag": fake.name(),
+                "created_at": fake.date_time_this_year()}
+        ins = insert(clan_table).values(clan)
+        conn.execute(ins)
+
+        player_table = db.Table("player", Base.metadata, autoload=True)
+        player = {"username": fake.name(), "password_hash": fake.name(),
+                  "email": fake.email(), "is_admin": fake.boolean(),
+                  "active": fake.boolean(),
+                  "created_at": fake.date_time_this_year(),
+                  "last_login": fake.date_time_this_year(),
+                  "clan_id": None, "server_id": None}
+        ins = insert(player_table).values(player)
+        conn.execute(ins)
+
+        server_table = db.Table("server", Base.metadata, autoload=True)
+        server = {"name": fake.name(), "ip": fake.ipv4(),
+                  "port": fake.port_number(),
+                  "created_at": fake.date_time_this_year(),
+                  "owner_id": None}
+        ins = insert(server_table).values(server)
+        conn.execute(ins)
+
+        achieve_table = db.Table("achievement", Base.metadata, autoload=True)
+        achievement = {"name": fake.name(), "description": fake.text()}
+        ins = insert(achieve_table).values(achievement)
+        conn.execute(ins)
+
+    return
 
 
-@app.get("/show_tables_content")
-def show_tables_content() -> str:
-    retv = ""
-    # show all tables and their content
-    for table in Base.metadata.tables:
-        retv += f"{table}\n"
-        for row in conn.execute(db.text(f"""SELECT *
-                                                      FROM {table}""")):
-            retv += f"{row}\n"
-    with open(OUTPUT_FILE, "w") as f:
-        f.write(retv)
-    return retv
+@app.post("/player", status_code=201)
+def add_player(username: str, password_hash: str, email: str,
+               is_admin: bool, server_id: int, clan_id: str = None) -> None:
+    # add a player
+    if not username or not password_hash or not\
+            email or not is_admin or not server_id:
+        raise HTTPException(status_code=400, detail="Bad request")
+    player = {
+        "username": username,
+        "password_hash": password_hash,
+        "email": email,
+        "is_admin": is_admin,
+        "active": True,
+        "created_at": datetime.datetime.now(),
+        "last_login": datetime.datetime.now(),
+        "clan_id": clan_id,
+        "server_id": server_id
+    }
+    player_table = db.Table("player", Base.metadata)
+    conn.execute(insert(player_table, player))
+    return
 
 
-@app.get("/get_players")
-def get_players() -> list:
+@app.get("/player/{player_id}", status_code=200)
+def get_player(player_id: int) -> dict:
+    # print out request parameters
+    print(f"{player_id=}")
+    # get player by id
+    table = db.Table("player", Base.metadata)
+    player = conn.execute(select(table).where(
+        table.c.id == player_id)).fetchone()
+    # handle any errors
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return player
+
+
+@app.put("/player/{player_id}", status_code=204)
+def update_player(player_id: int, username: str = None,
+                  password_hash: str = None, email: str = None,
+                  is_admin: bool = None, active: bool = None,
+                  created_at: datetime.datetime = None,
+                  last_login: datetime.datetime = None,
+                  clan_id: int = None, server_id: int = None) -> None:
+    # update player by id
+    player = conn.execute(select(db.Table("player")).where(
+        db.Table("player").c.id == player_id)).fetchone()
+    # handle any errors
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    # only update the fields that are not None
+    for param in [username, password_hash, email, is_admin, active,
+                  created_at, last_login, clan_id, server_id]:
+        if param is not None:
+            player[param] = param
+    player_table = db.Table("player", Base.metadata)
+    conn.execute(update(player_table).where(
+        db.Table("player").c.id == player_id).values(player))
+    return
+
+
+@app.delete("/player/{player_id}", status_code=204)
+def delete_player(player_id: int) -> None:
+    # delete player by id
+    table = db.Table("player", Base.metadata)
+    player = conn.execute(select(db.Table("player")).where(
+        table.c.id == player_id)).fetchone()
+    # handle any errors
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    conn.execute(delete(db.Table("player")).where(
+        table.c.id == player_id))
+    return
+
+
+@app.get("/players")
+def players() -> list[dict]:
     # get all players
-    players = []
+    players: list[dict] = []
     for player in conn.execute(db.text("SELECT * FROM player")):
         players.append(player)
     return players
 
 
 if __name__ == "__main__":
-    connstr = "postgresql://postgres:postgrespw@localhost:32779"
+    connstr = "postgresql://postgres:postgrespw@localhost:32768"
     engine = db.create_engine(connstr)
     conn = engine.connect()
     # run the app with uvicorn
