@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+faker
+sqlalchemy
+pytest
+requests
+psycopg2

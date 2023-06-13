@@ -1,7 +1,8 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Boolean, Column, ForeignKey, Integer
-from sqlalchemy import String, DateTime, Table
+from sqlalchemy import String, DateTime
 from sqlalchemy.orm import relationship
+
 Base = declarative_base()
 
 
@@ -43,10 +44,3 @@ class Achievement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=False)
-
-
-Player_Achievement = Table(
-    'player_achievement', Base.metadata,
-    Column('player_id', Integer, ForeignKey('player.id')),
-    Column('achievement_id', Integer, ForeignKey('achievement.id'))
-)
